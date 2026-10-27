@@ -1,0 +1,442 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Тыква со стола</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Golos+Text:wght@400;500;600&display=swap">
+<style>
+*,*::before,*::after{box-sizing:border-box}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0}
+[hidden]{display:none!important}
+/* Layout: 3D stage first, a carving toolbar right under it, templates and shape settings below */
+:root{
+  --bg:#ecedef; --surface:#ffffff; --fg:#1d1e21; --muted:#6b6e75; --line:#d6d8dc;
+  --accent:#d8641f; --glow:#ffb24a;
+  --display:"Unbounded", "Arial Black", system-ui, sans-serif;
+  --body:"Golos Text", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#141518; --surface:#1d1f23; --fg:#ecedef; --muted:#979aa2; --line:#2e3036;
+  --accent:#f0823a; --glow:#ffb24a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141518; --surface:#1d1f23; --fg:#ecedef; --muted:#979aa2; --line:#2e3036;
+  --accent:#f0823a; --glow:#ffb24a; color-scheme:dark}
+html,body{background:var(--bg);color:var(--fg)}
+body{font-family:var(--body);font-size:15px;line-height:1.5}
+.wrap{max-width:1100px;margin:0 auto;padding-block:20px 40px;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));
+  padding-right:max(16px, env(safe-area-inset-right, 0px));
+  display:grid;gap:16px}
+header{display:grid;gap:4px}
+h1{font-family:var(--display);font-weight:700;font-size:clamp(22px,4vw,32px);margin:0;letter-spacing:-.01em;text-wrap:balance}
+h1 span{color:var(--accent)}
+.sub{color:var(--muted);margin:0;font-size:14px;max-width:62ch}
+.stage{position:relative;height:min(62vh,560px);min-height:340px;border-radius:14px;overflow:hidden;
+  background:radial-gradient(120% 90% at 50% 30%, var(--surface), var(--bg));border:1px solid var(--line);transition:background .4s}
+.stage.night{background:radial-gradient(120% 90% at 50% 45%, #1c140d, #07060a)}
+#c{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
+.stage.draw #c{cursor:crosshair}
+.hint{position:absolute;left:12px;bottom:10px;right:12px;font-size:12px;color:var(--muted);pointer-events:none}
+.stage.night .hint{color:#a08a72}
+.corner{position:absolute;right:10px;top:10px;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+button{font:500 13px var(--body);color:var(--fg);background:var(--surface);border:1px solid var(--line);
+  border-radius:999px;padding:7px 13px;cursor:pointer;white-space:nowrap}
+button:hover{border-color:var(--accent)}
+button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+button:disabled{opacity:.45;cursor:default}
+.bar{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px}
+.group{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;padding:2px;background:var(--surface)}
+.seg button{border:0;background:transparent}
+.seg button[aria-pressed="true"]{background:var(--accent);color:#fff}
+.brush{display:flex;align-items:center;gap:8px;font-size:13px;min-width:180px;flex:1 1 180px;max-width:280px}
+.brush input{flex:1}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.label{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.templates{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.tpl{border-radius:12px;padding:10px 12px;text-align:left;display:grid;gap:2px;white-space:normal}
+.tpl b{font-family:var(--display);font-weight:500;font-size:13px}
+.tpl small{color:var(--muted);font-size:12px}
+details{border-top:1px solid var(--line);padding-top:12px}
+summary{cursor:pointer;font-weight:600;font-size:14px}
+.panel{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px 28px;margin-top:14px}
+.ctl{display:grid;gap:4px;min-width:0}
+.ctl label{display:flex;justify-content:space-between;gap:10px;font-size:13px;font-weight:500}
+.ctl output{font-variant-numeric:tabular-nums;color:var(--muted);font-weight:400}
+.swatches{display:flex;gap:8px;flex-wrap:wrap}
+.sw{width:30px;height:30px;border-radius:50%;padding:0;border:2px solid var(--line)}
+.sw[aria-pressed="true"]{border-color:var(--fg);background:var(--sw)}
+.note{font-size:13px;color:var(--muted);margin:0}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Тыква <span>со стола</span></h1>
+    <p class="sub">Мастерская резьбы к Хэллоуину. Включите «Рисовать» и ведите пальцем по тыкве: прорези пропускают свет свечи, соскобленная кожура светится мягко, как тонкая стенка.</p>
+  </header>
+
+  <div class="stage night" id="stage">
+    <canvas id="c" aria-label="3D-модель тыквы для резьбы"></canvas>
+    <div class="corner">
+      <button id="spin" aria-pressed="false">Вращение</button>
+      <button id="night" aria-pressed="true">Ночь</button>
+    </div>
+    <div class="hint" id="hint"></div>
+  </div>
+
+  <div class="bar">
+    <div class="seg" role="group" aria-label="Режим">
+      <button id="m-view" aria-pressed="true">Смотреть</button>
+      <button id="m-draw" aria-pressed="false">Рисовать</button>
+    </div>
+    <div class="seg" role="group" aria-label="Инструмент">
+      <button data-tool="cut" aria-pressed="true">Прорезать</button>
+      <button data-tool="shave" aria-pressed="false">Соскоблить</button>
+      <button data-tool="erase" aria-pressed="false">Ластик</button>
+    </div>
+    <label class="brush" for="size">Нож <input type="range" id="size" min="0.02" max="0.16" step="0.005" value="0.05"></label>
+    <div class="group">
+      <button id="undo" disabled>Отменить</button>
+      <button id="clear">Новая тыква</button>
+    </div>
+  </div>
+
+  <div class="label">Шаблоны</div>
+  <div class="templates" id="templates"></div>
+  <p class="note">Шаблон ложится на сторону, которая смотрит на вас при загрузке. После него можно дорисовывать и стирать. Узор сохраняется в этом браузере.</p>
+
+  <details>
+    <summary>Форма и цвет тыквы</summary>
+    <div class="panel">
+      <div class="ctl"><label for="ribs">Рёбра <output id="o-ribs"></output></label><input type="range" id="ribs" min="6" max="22" step="1"></div>
+      <div class="ctl"><label for="depth">Глубина бороздок <output id="o-depth"></output></label><input type="range" id="depth" min="0" max="0.25" step="0.005"></div>
+      <div class="ctl"><label for="height">Высота к ширине <output id="o-height"></output></label><input type="range" id="height" min="0.7" max="1.35" step="0.01"></div>
+      <div class="ctl"><label for="dimple">Ямка у хвостика <output id="o-dimple"></output></label><input type="range" id="dimple" min="0" max="0.45" step="0.01"></div>
+      <div class="ctl"><label for="irr">Неровность <output id="o-irr"></output></label><input type="range" id="irr" min="0" max="1" step="0.01"></div>
+      <div class="ctl"><label for="stem">Длина хвостика <output id="o-stem"></output></label><input type="range" id="stem" min="0.05" max="0.6" step="0.01"></div>
+      <div class="ctl"><label for="net">Сеточка на кожуре <output id="o-net"></output></label><input type="range" id="net" min="0" max="1" step="0.01"></div>
+      <div class="ctl"><label for="seed">Вариант формы <output id="o-seed"></output></label><input type="range" id="seed" min="1" max="50" step="1"></div>
+      <div class="ctl"><label>Цвет</label><div class="swatches" id="swatches"></div></div>
+    </div>
+  </details>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(function(){
+const DEFAULTS={ribs:12,depth:0.075,height:1.05,dimple:0.22,irr:0.35,stem:0.2,net:0.6,seed:7,color:'#e8731f'};
+const COLORS=[['Как на фото','#e8731f'],['Тёмная','#c4541a'],['Светлая','#f09a3e'],['Белая','#e9e2cf'],['Зелёная','#5f7a4a']];
+const P=Object.assign({},DEFAULTS);
+const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+try{const s=JSON.parse(store.get('pumpkin-shape')||'null');if(s)Object.assign(P,s);}catch(e){}
+
+// ---------- renderer / scene ----------
+const stageEl=document.getElementById('stage');
+const canvas=document.getElementById('c');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.outputEncoding=THREE.sRGBEncoding;
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(35,1,0.1,100);
+const controls=new THREE.OrbitControls(camera,canvas);
+controls.enableDamping=true; controls.minDistance=2.6; controls.maxDistance=12;
+controls.maxPolarAngle=Math.PI*0.52; controls.autoRotateSpeed=1.2;
+function frontView(){camera.position.set(0,1.7,5.4);controls.target.set(0,1,0);controls.update();}
+frontView();
+
+const hemi=new THREE.HemisphereLight(0xfff4e8,0x2a2622,0.55);scene.add(hemi);
+const key=new THREE.DirectionalLight(0xfff1dc,1.15);
+key.position.set(3,6,2.5); key.castShadow=true; key.shadow.mapSize.set(1024,1024);
+key.shadow.camera.left=-3;key.shadow.camera.right=3;key.shadow.camera.top=3;key.shadow.camera.bottom=-3;
+scene.add(key);
+const rim=new THREE.DirectionalLight(0xffd2a8,0.45); rim.position.set(-4,2,-3); scene.add(rim);
+const candle=new THREE.PointLight(0xff9a3c,2.2,9,1.6);
+candle.castShadow=true; candle.shadow.mapSize.set(512,512); candle.shadow.bias=-0.004; candle.shadow.camera.near=0.05;
+scene.add(candle);
+const flame=new THREE.Mesh(new THREE.SphereGeometry(0.05,12,8),new THREE.MeshBasicMaterial({color:0xffd28a}));
+flame.scale.y=1.8;scene.add(flame);
+
+// table plus a dark wall behind it, so light through the cuts has somewhere to land
+const table=new THREE.Mesh(new THREE.CircleGeometry(5,64),new THREE.MeshStandardMaterial({color:0x26231f,roughness:0.6}));
+table.rotation.x=-Math.PI/2; table.receiveShadow=true; scene.add(table);
+const wall=new THREE.Mesh(new THREE.PlaneGeometry(10,6),new THREE.MeshStandardMaterial({color:0x3a3632,roughness:0.95}));
+wall.position.set(0,3,-2.6); wall.receiveShadow=true; scene.add(wall);
+
+// ---------- helpers ----------
+function rng(seed){let s=seed*9301+49297;return()=>{s=(s*16807)%2147483647;return (s-1)/2147483646;};}
+function hash(x,y){const s=Math.sin(x*127.1+y*311.7)*43758.5453;return s-Math.floor(s);}
+function vnoise(x,y,wrap){const xi=Math.floor(x),yi=Math.floor(y),xf=x-xi,yf=y-yi;
+  const w=a=>wrap?((a%wrap)+wrap)%wrap:a;
+  const a=hash(w(xi),yi),b=hash(w(xi+1),yi),c=hash(w(xi),yi+1),d=hash(w(xi+1),yi+1);
+  const u=xf*xf*(3-2*xf),v=yf*yf*(3-2*yf);return a+(b-a)*u+(c-a)*v+(a-b-c+d)*u*v;}
+
+// ---------- skin texture ----------
+const TW=1024,TH=512;
+const colorCanvas=document.createElement('canvas');colorCanvas.width=TW;colorCanvas.height=TH;
+const bumpCanvas=document.createElement('canvas');bumpCanvas.width=TW;bumpCanvas.height=TH;
+const GX=150,GY=75,pts=new Float32Array(GX*GY*2);
+for(let j=0;j<GY;j++)for(let i=0;i<GX;i++){pts[(j*GX+i)*2]=hash(i,j+3);pts[(j*GX+i)*2+1]=hash(i+7,j);}
+const veinField=new Float32Array(TW*TH),mottle=new Float32Array(TW*TH);
+(function(){const cw=TW/GX,ch=TH/GY;
+  for(let y=0;y<TH;y++){const cy=Math.floor(y/ch);for(let x=0;x<TW;x++){const cx=Math.floor(x/cw);
+    let f1=1e9,f2=1e9;
+    for(let dj=-1;dj<=1;dj++){const j=cy+dj;if(j<0||j>=GY)continue;
+      for(let di=-1;di<=1;di++){let i=cx+di,off=0;if(i<0){i+=GX;off=-TW}else if(i>=GX){i-=GX;off=TW}
+        const px=(i+pts[(j*GX+i)*2])*cw+off,py=(j+pts[(j*GX+i)*2+1])*ch;
+        const d=Math.hypot(px-x,py-y);if(d<f1){f2=f1;f1=d}else if(d<f2)f2=d;}}
+    const k=y*TW+x;
+    veinField[k]=Math.max(0,1-(f2-f1)/1.8);
+    mottle[k]=0.55*vnoise(x/40,y/40,TW/40)+0.3*vnoise(x/12,y/12,Math.round(TW/12))+0.15*vnoise(x/4,y/4,TW/4);
+  }}})();
+const colorTex=new THREE.CanvasTexture(colorCanvas),bumpTex=new THREE.CanvasTexture(bumpCanvas);
+[colorTex,bumpTex].forEach(t=>{t.wrapS=THREE.RepeatWrapping;t.repeat.set(2,1);t.anisotropy=4;});
+colorTex.encoding=THREE.sRGBEncoding;
+function paintSkin(){
+  const c=colorCanvas.getContext('2d'),b=bumpCanvas.getContext('2d');
+  const ci=c.createImageData(TW,TH),bi=b.createImageData(TW,TH),n=P.net;
+  for(let k=0;k<TW*TH;k++){
+    const v=veinField[k]*n,m=mottle[k],base=0.72+0.22*m;
+    ci.data[k*4]=Math.min(1,base+v*0.28)*255;ci.data[k*4+1]=Math.min(1,base+v*0.34)*255;
+    ci.data[k*4+2]=Math.min(1,base*0.96+v*0.32)*255;ci.data[k*4+3]=255;
+    const h=(0.5+0.35*m+v*0.5)*255;bi.data[k*4]=bi.data[k*4+1]=bi.data[k*4+2]=h;bi.data[k*4+3]=255;
+  }
+  c.putImageData(ci,0,0);b.putImageData(bi,0,0);colorTex.needsUpdate=true;bumpTex.needsUpdate=true;
+}
+
+// ---------- carving layers (same UV space as the body) ----------
+// cut: white = skin stays, black = hole. shave: black = untouched, warm = skin scraped thin.
+const MW=1024,MH=512;
+const cutCanvas=document.createElement('canvas');cutCanvas.width=MW;cutCanvas.height=MH;
+const shaveCanvas=document.createElement('canvas');shaveCanvas.width=MW;shaveCanvas.height=MH;
+const cutCtx=cutCanvas.getContext('2d'),shaveCtx=shaveCanvas.getContext('2d');
+const SHAVE='#ffc46e';
+function blank(){cutCtx.fillStyle='#fff';cutCtx.fillRect(0,0,MW,MH);shaveCtx.fillStyle='#000';shaveCtx.fillRect(0,0,MW,MH);}
+blank();
+const cutTex=new THREE.CanvasTexture(cutCanvas),shaveTex=new THREE.CanvasTexture(shaveCanvas);
+shaveTex.encoding=THREE.sRGBEncoding;
+function layersChanged(){cutTex.needsUpdate=true;shaveTex.needsUpdate=true;}
+
+// ---------- materials ----------
+const skin=new THREE.MeshStandardMaterial({map:colorTex,bumpMap:bumpTex,bumpScale:0.012,roughness:0.62,
+  alphaMap:cutTex,alphaTest:0.5,emissive:0xffffff,emissiveMap:shaveTex,emissiveIntensity:0.6});
+const flesh=new THREE.MeshStandardMaterial({color:0xf1b866,roughness:0.8,side:THREE.DoubleSide,
+  alphaMap:cutTex,alphaTest:0.5,emissive:0xff8a2a,emissiveIntensity:0.25});
+const depthMat=new THREE.MeshDepthMaterial({depthPacking:THREE.RGBADepthPacking,alphaMap:cutTex,alphaTest:0.5});
+const distMat=new THREE.MeshDistanceMaterial({alphaMap:cutTex,alphaTest:0.5});
+const stemMat=new THREE.MeshStandardMaterial({color:0xc2b494,roughness:0.95});
+const calyxMat=new THREE.MeshStandardMaterial({color:0x5d6352,roughness:0.85,side:THREE.DoubleSide});
+
+// ---------- pumpkin geometry ----------
+const R=1,SU=200,SV=110,WALL=0.92;
+let body,inner,stem,calyx,group=new THREE.Group();scene.add(group);
+let bodyH=1;
+
+function surface(theta,phi,ctx){
+  const {N,ribAmp,ribTilt}=ctx;
+  const t=theta/(2*Math.PI)*N,i=Math.floor(t)%N,s=t-Math.floor(t);
+  const bulge=Math.pow(Math.sin(Math.PI*s),0.55)*ribAmp[i];
+  const poleFade=Math.pow(Math.sin(phi),0.25);
+  let r=R*(1-P.depth+P.depth*bulge*poleFade);
+  r*=1+P.irr*0.035*(vnoise(theta*3+ctx.sx,phi*3,0)-0.5)*2+ribTilt[i]*P.irr*0.03*Math.cos(phi);
+  const prof=Math.sin(phi)*(1+0.04*Math.sin(phi*2-0.6));
+  let y=P.height*R*Math.cos(phi);
+  y-=P.dimple*R*Math.exp(-Math.pow(phi/0.38,2));
+  y+=P.dimple*0.45*R*Math.exp(-Math.pow((Math.PI-phi)/0.4,2));
+  return [r*prof*Math.cos(theta),y,r*prof*Math.sin(theta)];
+}
+
+function build(){
+  const rand=rng(P.seed),N=P.ribs,ribAmp=[],ribTilt=[];
+  for(let i=0;i<N;i++){ribAmp.push(1+P.irr*(rand()-0.5)*0.5);ribTilt.push(rand()-0.5);}
+  const ctx={N,ribAmp,ribTilt,sx:rand()*10};
+  const pos=new Float32Array((SU+1)*(SV+1)*3),uv=new Float32Array((SU+1)*(SV+1)*2),idx=[];
+  let minY=1e9,topY=0;
+  for(let v=0;v<=SV;v++){const phi=v/SV*Math.PI;
+    for(let u=0;u<=SU;u++){const th=(u%SU)/SU*2*Math.PI,p=surface(th,phi,ctx),k=v*(SU+1)+u;
+      pos.set(p,k*3);uv[k*2]=u/SU;uv[k*2+1]=1-v/SV;if(p[1]<minY)minY=p[1];if(v===0)topY=p[1];}}
+  for(let v=0;v<SV;v++)for(let u=0;u<SU;u++){const a=v*(SU+1)+u,b=a+SU+1;idx.push(a,b,a+1,b,b+1,a+1);}
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  g.setAttribute('uv',new THREE.BufferAttribute(uv,2));g.setIndex(idx);g.computeVertexNormals();
+  const nr=g.attributes.normal.array;
+  for(let v=0;v<=SV;v++){const a=v*(SU+1),b=a+SU;for(let c=0;c<3;c++){const m=(nr[a*3+c]+nr[b*3+c])/2;nr[a*3+c]=nr[b*3+c]=m;}}
+  if(body){group.remove(body,inner);body.geometry.dispose();}
+  body=new THREE.Mesh(g,skin);body.castShadow=true;body.receiveShadow=true;
+  body.customDepthMaterial=depthMat;body.customDistanceMaterial=distMat;
+  inner=new THREE.Mesh(g,flesh);inner.scale.setScalar(WALL);
+  group.add(body,inner);
+
+  const heightAt=d=>{const phi=Math.min(1.2,d/(R*(1-P.depth*0.4)));return P.height*R*Math.cos(phi)-P.dimple*R*Math.exp(-Math.pow(phi/0.38,2));};
+  const shape=new THREE.Shape(),n5=N>=10?6:5,ro=0.3,ri=0.1;
+  for(let i=0;i<n5*2;i++){const a=i/(n5*2)*Math.PI*2,rr=i%2?ri:ro*(0.8+0.4*rand());
+    const x=Math.cos(a)*rr,y=Math.sin(a)*rr;i?shape.lineTo(x,y):shape.moveTo(x,y);}
+  const cg=new THREE.ShapeGeometry(shape,6);cg.rotateX(-Math.PI/2);
+  const cp=cg.attributes.position.array;
+  for(let i=0;i<cp.length;i+=3){cp[i+1]=heightAt(Math.hypot(cp[i],cp[i+2]))+0.012;}
+  cg.computeVertexNormals();
+  if(calyx){group.remove(calyx);calyx.geometry.dispose();}
+  calyx=new THREE.Mesh(cg,calyxMat);group.add(calyx);
+
+  const L=P.stem,SL=L+0.12;
+  const sg=new THREE.CylinderGeometry(0.085,0.15,SL,14,8,false),sp=sg.attributes.position.array;
+  for(let i=0;i<sp.length;i+=3){
+    const x=sp[i],y=sp[i+1],z=sp[i+2],h=(y+SL/2)/SL,a=Math.atan2(z,x),r=Math.hypot(x,z);
+    const ridge=1+0.18*Math.pow(Math.abs(Math.cos(a*3.5)),3),tw=a+h*0.5,lean=h*h*0.06;
+    const rr=r*ridge*(1+0.12*(hash(Math.round(a*10),Math.round(h*8))-0.5));
+    sp[i]=Math.cos(tw)*rr+lean;sp[i+1]=h>0.98?y+0.03*(hash(Math.round(a*20),1)-0.5):y;sp[i+2]=Math.sin(tw)*rr;}
+  sg.computeVertexNormals();
+  if(stem){group.remove(stem);stem.geometry.dispose();}
+  stem=new THREE.Mesh(sg,stemMat);stem.castShadow=true;stem.position.y=topY+SL/2-0.08;group.add(stem);
+
+  group.position.y=-minY;bodyH=P.height;
+  candle.position.set(0,-minY-P.height*0.35,0);flame.position.copy(candle.position).y+=0.06;
+}
+
+// ---------- drawing on the surface ----------
+let mode='view',tool='cut',drawing=false,last=null;
+const ray=new THREE.Raycaster(),ndc=new THREE.Vector2();
+const undoStack=[];const undoBtn=document.getElementById('undo');
+function snapshot(){undoStack.push([cutCtx.getImageData(0,0,MW,MH),shaveCtx.getImageData(0,0,MW,MH)]);
+  if(undoStack.length>25)undoStack.shift();undoBtn.disabled=false;}
+undoBtn.onclick=()=>{const s=undoStack.pop();if(!s)return;cutCtx.putImageData(s[0],0,0);shaveCtx.putImageData(s[1],0,0);
+  layersChanged();save();undoBtn.disabled=!undoStack.length;};
+
+function hitUV(e){const r=canvas.getBoundingClientRect();
+  ndc.set(((e.clientX-r.left)/r.width)*2-1,-((e.clientY-r.top)/r.height)*2+1);
+  ray.setFromCamera(ndc,camera);const h=ray.intersectObject(body,false)[0];
+  return h?{x:h.uv.x*MW,y:(1-h.uv.y)*MH}:null;}
+function stamp(x,y){
+  const phi=y/MH*Math.PI,s=Math.max(0.18,Math.sin(phi)),b=+document.getElementById('size').value;
+  const ry=b*MH/(Math.PI*bodyH),rx=b*MW/(2*Math.PI*s);
+  const paint=(ctx,col)=>{ctx.fillStyle=col;for(const off of [-MW,0,MW]){ctx.beginPath();ctx.ellipse(x+off,y,rx,ry,0,0,Math.PI*2);ctx.fill();}};
+  if(tool==='cut')paint(cutCtx,'#000');
+  else if(tool==='shave')paint(shaveCtx,SHAVE);
+  else{paint(cutCtx,'#fff');paint(shaveCtx,'#000');}
+  return ry;
+}
+function strokeTo(p){
+  if(!last){stamp(p.x,p.y);last=p;return;}
+  let dx=p.x-last.x;if(dx>MW/2)dx-=MW;if(dx<-MW/2)dx+=MW;const dy=p.y-last.y;
+  const step=Math.max(1.5,stamp(last.x,last.y)*0.35),n=Math.ceil(Math.hypot(dx,dy)/step);
+  if(n>60){stamp(p.x,p.y);last=p;return;} // jumped across the pumpkin: don't draw a line through it
+  for(let i=1;i<=n;i++){let x=last.x+dx*i/n;x=(x+MW)%MW;stamp(x,last.y+dy*i/n);}
+  last=p;
+}
+canvas.addEventListener('pointerdown',e=>{if(mode!=='draw')return;const p=hitUV(e);if(!p)return;
+  snapshot();drawing=true;last=null;canvas.setPointerCapture(e.pointerId);strokeTo(p);layersChanged();});
+canvas.addEventListener('pointermove',e=>{if(!drawing)return;const p=hitUV(e);if(!p){last=null;return;}strokeTo(p);layersChanged();});
+const endStroke=()=>{if(drawing){drawing=false;last=null;save();}};
+canvas.addEventListener('pointerup',endStroke);canvas.addEventListener('pointercancel',endStroke);
+
+// ---------- templates (drawn in world-scaled face coords, centred on the front) ----------
+const FU=0.25,PHI0=1.42,S=0.55;
+function F(fx,fy){return[MW*FU+fx*S*MW/(2*Math.PI),(PHI0+fy*S/P.height)*MH/Math.PI];}
+const unit=S*MW/(2*Math.PI);
+function poly(ctx,col,ptsF){ctx.fillStyle=col;ctx.beginPath();ptsF.forEach(([a,b],i)=>{const[x,y]=F(a,b);i?ctx.lineTo(x,y):ctx.moveTo(x,y);});ctx.closePath();ctx.fill();}
+function circ(ctx,col,fx,fy,r,ry){const[x,y]=F(fx,fy);ctx.fillStyle=col;ctx.beginPath();ctx.ellipse(x,y,r*unit,(ry||r)*unit/P.height,0,0,Math.PI*2);ctx.fill();}
+const mirror=p=>p.map(([x,y])=>[-x,y]).reverse();
+function curve(f,a,b,n){const o=[];for(let i=0;i<=n;i++){const x=a+(b-a)*i/n;o.push([x,f(x)]);}return o;}
+function bat(cx,cy,s,flip){const half=[[0,-0.25],[0.08,-0.38],[0.13,-0.22],[0.35,-0.28],[0.65,-0.42],[1,-0.22],[0.85,0.02],[0.68,-0.04],[0.55,0.13],[0.38,0.01],[0.2,0.15],[0,0.25]];
+  const full=half.concat(mirror(half).slice(1,-1));
+  poly(cutCtx,'#000',full.map(([x,y])=>[cx+x*s*(flip?-1:1),cy+y*s]));}
+
+const TEMPLATES=[
+ {name:'Классика',desc:'Треугольные глаза и улыбка с двумя зубами',draw(){
+   poly(cutCtx,'#000',[[-0.62,-0.12],[-0.16,-0.12],[-0.39,-0.6]]);
+   poly(cutCtx,'#000',[[0.62,-0.12],[0.16,-0.12],[0.39,-0.6]]);
+   poly(cutCtx,'#000',[[-0.11,0.16],[0.11,0.16],[0,-0.06]]);
+   const top=x=>0.42-0.32*x*x,bot=x=>0.82-0.5*x*x;
+   poly(cutCtx,'#000',curve(top,-0.78,0.78,24).concat(curve(bot,0.78,-0.78,24)));
+   [[-0.36,-0.16],[0.16,0.36]].forEach(([a,b])=>poly(cutCtx,'#fff',curve(top,a,b,6).map(([x,y])=>[x,y-0.03]).concat(curve(x=>top(x)+0.17,b,a,6))));
+ }},
+ {name:'Злая',desc:'Скошенные глаза и рот с клыками',draw(){
+   poly(cutCtx,'#000',[[-0.68,-0.5],[-0.14,-0.24],[-0.26,-0.02],[-0.6,-0.12]]);
+   poly(cutCtx,'#000',mirror([[-0.68,-0.5],[-0.14,-0.24],[-0.26,-0.02],[-0.6,-0.12]]));
+   poly(cutCtx,'#000',[[-0.07,0.08],[0,-0.08],[0.07,0.08],[0,0.2]]);
+   const t=[],b=[];for(let i=0;i<=10;i++){const x=-0.82+i*0.164;t.push([x,0.3+0.18*x*x+(i%2?0.17:0)]);}
+   for(let i=10;i>=0;i--){const x=-0.82+i*0.164;b.push([x,0.82-0.25*x*x-(i%2?0:0.15)]);}
+   poly(cutCtx,'#000',t.concat(b));
+ }},
+ {name:'Летучие мыши',desc:'Стая прорезей и соскобленная луна',draw(){
+   circ(shaveCtx,SHAVE,0.42,-0.25,0.42);
+   bat(-0.45,-0.35,0.38,false);bat(0.1,0.25,0.5,true);bat(-0.6,0.55,0.26,false);bat(0.62,0.7,0.22,true);
+ }},
+ {name:'Кот на луне',desc:'Луна соскоблена, кот остаётся тёмным, звёзды прорезаны',draw(){
+   circ(shaveCtx,SHAVE,0,0.05,0.78);
+   circ(shaveCtx,'#000',0.05,0.42,0.33,0.3);circ(shaveCtx,'#000',0.18,0.02,0.17);
+   poly(shaveCtx,'#000',[[0.04,-0.06],[0.06,-0.28],[0.16,-0.12]]);poly(shaveCtx,'#000',[[0.2,-0.13],[0.31,-0.27],[0.32,-0.05]]);
+   poly(shaveCtx,'#000',[[-0.22,0.6],[-0.55,0.55],[-0.62,0.3],[-0.5,0.32],[-0.46,0.47],[-0.2,0.5]]);
+   poly(shaveCtx,'#000',[[-0.9,0.68],[0.9,0.68],[0.9,0.95],[-0.9,0.95]]);
+   [[-0.6,-0.45,0.05],[0.65,-0.5,0.04],[-0.85,0.1,0.035],[0.85,0.0,0.045],[0.45,-0.85,0.03]].forEach(([x,y,r])=>circ(cutCtx,'#000',x,y,r));
+ }},
+];
+const tplBox=document.getElementById('templates');
+TEMPLATES.forEach(t=>{const b=document.createElement('button');b.className='tpl';b.innerHTML='<b>'+t.name+'</b><small>'+t.desc+'</small>';
+  b.onclick=()=>{snapshot();blank();t.draw();layersChanged();save();frontView();};tplBox.appendChild(b);});
+document.getElementById('clear').onclick=()=>{snapshot();blank();layersChanged();save();};
+
+// ---------- persistence ----------
+function save(){store.set('pumpkin-cut',cutCanvas.toDataURL('image/png'));store.set('pumpkin-shave',shaveCanvas.toDataURL('image/png'));}
+function load(){
+  const c=store.get('pumpkin-cut'),s=store.get('pumpkin-shave');
+  if(!c){TEMPLATES[0].draw();layersChanged();return;}
+  const ic=new Image();ic.onload=()=>{cutCtx.drawImage(ic,0,0);layersChanged();};ic.src=c;
+  if(s){const is=new Image();is.onload=()=>{shaveCtx.drawImage(is,0,0);layersChanged();};is.src=s;}
+}
+
+// ---------- UI ----------
+const hint=document.getElementById('hint');
+function setMode(m){mode=m;controls.enabled=m==='view';stageEl.classList.toggle('draw',m==='draw');
+  document.getElementById('m-view').setAttribute('aria-pressed',m==='view');document.getElementById('m-draw').setAttribute('aria-pressed',m==='draw');
+  hint.textContent=m==='view'?'Тяните, чтобы повернуть · щипок или колесо — масштаб':'Ведите по тыкве, чтобы резать · чтобы повернуть, переключитесь на «Смотреть»';
+  if(m==='draw'){controls.autoRotate=false;document.getElementById('spin').setAttribute('aria-pressed','false');}}
+document.getElementById('m-view').onclick=()=>setMode('view');
+document.getElementById('m-draw').onclick=()=>setMode('draw');
+document.querySelectorAll('[data-tool]').forEach(b=>b.onclick=()=>{tool=b.dataset.tool;
+  document.querySelectorAll('[data-tool]').forEach(x=>x.setAttribute('aria-pressed',x===b));if(mode!=='draw')setMode('draw');});
+document.getElementById('spin').onclick=e=>{if(mode==='draw')setMode('view');controls.autoRotate=!controls.autoRotate;e.currentTarget.setAttribute('aria-pressed',controls.autoRotate);};
+let night=true;
+function setNight(v){night=v;stageEl.classList.toggle('night',v);document.getElementById('night').setAttribute('aria-pressed',v);
+  hemi.intensity=v?0.05:0.55;key.intensity=v?0.06:1.15;rim.intensity=v?0.08:0.45;}
+document.getElementById('night').onclick=()=>setNight(!night);
+
+const ids=['ribs','depth','height','dimple','irr','stem','net','seed'];
+const fmt={ribs:v=>v,depth:v=>Math.round(v*100)+'%',height:v=>(+v).toFixed(2),dimple:v=>Math.round(v*100)+'%',
+  irr:v=>Math.round(v*100)+'%',stem:v=>Math.round(v*100)+' мм',net:v=>Math.round(v*100)+'%',seed:v=>'№'+v};
+function sync(){ids.forEach(id=>{document.getElementById(id).value=P[id];document.getElementById('o-'+id).textContent=fmt[id](P[id]);});
+  document.querySelectorAll('.sw').forEach(b=>b.setAttribute('aria-pressed',b.dataset.c===P.color));skin.color.set(P.color);}
+let pending=false;
+ids.forEach(id=>document.getElementById(id).addEventListener('input',e=>{
+  P[id]=+e.target.value;document.getElementById('o-'+id).textContent=fmt[id](P[id]);store.set('pumpkin-shape',JSON.stringify(P));
+  if(id==='net'){paintSkin();return;}
+  if(!pending){pending=true;requestAnimationFrame(()=>{pending=false;build();});}
+}));
+const swBox=document.getElementById('swatches');
+COLORS.forEach(([name,c])=>{const b=document.createElement('button');b.className='sw';b.dataset.c=c;b.style.background=c;
+  b.title=name;b.setAttribute('aria-label',name);b.onclick=()=>{P.color=c;sync();store.set('pumpkin-shape',JSON.stringify(P));};swBox.appendChild(b);});
+
+function resize(){const w=canvas.clientWidth,h=canvas.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;
+  camera.fov=w<500?46:35;camera.updateProjectionMatrix();}
+new ResizeObserver(resize).observe(canvas);
+
+const calm=matchMedia('(prefers-reduced-motion: reduce)').matches;
+sync();paintSkin();build();load();setMode('view');setNight(true);resize();
+const clock=new THREE.Clock();
+(function loop(){
+  const t=clock.getElapsedTime();
+  const f=calm?1:0.85+0.1*Math.sin(t*7.3)+0.06*Math.sin(t*13.1+1)+0.04*Math.sin(t*23.7);
+  candle.intensity=(night?2.4:1.2)*f;
+  skin.emissiveIntensity=(night?0.75:0.35)*f;flesh.emissiveIntensity=(night?0.35:0.12)*f;
+  flame.scale.set(1,1.8*f,1);
+  controls.update();renderer.render(scene,camera);requestAnimationFrame(loop);
+})();
+})();
+</script>
+</body>
+</html>
