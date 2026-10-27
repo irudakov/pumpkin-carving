@@ -179,8 +179,10 @@ function vnoise(x,y,wrap){const xi=Math.floor(x),yi=Math.floor(y),xf=x-xi,yf=y-y
 
 // ---------- skin texture ----------
 const TW=1024,TH=512;
-const colorCanvas=document.createElement('canvas');colorCanvas.width=TW;colorCanvas.height=TH;
-const bumpCanvas=document.createElement('canvas');bumpCanvas.width=TW;bumpCanvas.height=TH;
+// r128 shares one UV transform across material maps. Bake the two skin tiles
+// into the canvases so carving, flesh and shadow masks all keep unscaled UVs.
+const colorCanvas=document.createElement('canvas');colorCanvas.width=TW*2;colorCanvas.height=TH;
+const bumpCanvas=document.createElement('canvas');bumpCanvas.width=TW*2;bumpCanvas.height=TH;
 const GX=150,GY=75,pts=new Float32Array(GX*GY*2);
 for(let j=0;j<GY;j++)for(let i=0;i<GX;i++){pts[(j*GX+i)*2]=hash(i,j+3);pts[(j*GX+i)*2+1]=hash(i+7,j);}
 const veinField=new Float32Array(TW*TH),mottle=new Float32Array(TW*TH);
@@ -196,7 +198,7 @@ const veinField=new Float32Array(TW*TH),mottle=new Float32Array(TW*TH);
     mottle[k]=0.55*vnoise(x/40,y/40,TW/40)+0.3*vnoise(x/12,y/12,Math.round(TW/12))+0.15*vnoise(x/4,y/4,TW/4);
   }}})();
 const colorTex=new THREE.CanvasTexture(colorCanvas),bumpTex=new THREE.CanvasTexture(bumpCanvas);
-[colorTex,bumpTex].forEach(t=>{t.wrapS=THREE.RepeatWrapping;t.repeat.set(2,1);t.anisotropy=4;});
+[colorTex,bumpTex].forEach(t=>{t.wrapS=THREE.RepeatWrapping;t.anisotropy=4;});
 colorTex.encoding=THREE.sRGBEncoding;
 function paintSkin(){
   const c=colorCanvas.getContext('2d'),b=bumpCanvas.getContext('2d');
@@ -207,7 +209,8 @@ function paintSkin(){
     ci.data[k*4+2]=Math.min(1,base*0.96+v*0.32)*255;ci.data[k*4+3]=255;
     const h=(0.5+0.35*m+v*0.5)*255;bi.data[k*4]=bi.data[k*4+1]=bi.data[k*4+2]=h;bi.data[k*4+3]=255;
   }
-  c.putImageData(ci,0,0);b.putImageData(bi,0,0);colorTex.needsUpdate=true;bumpTex.needsUpdate=true;
+  for(const x of [0,TW]){c.putImageData(ci,x,0);b.putImageData(bi,x,0);}
+  colorTex.needsUpdate=true;bumpTex.needsUpdate=true;
 }
 
 // ---------- carving layers (same UV space as the body) ----------
@@ -261,7 +264,8 @@ function build(){
   for(let v=0;v<=SV;v++){const phi=v/SV*Math.PI;
     for(let u=0;u<=SU;u++){const th=(u%SU)/SU*2*Math.PI,p=surface(th,phi,ctx),k=v*(SU+1)+u;
       pos.set(p,k*3);uv[k*2]=u/SU;uv[k*2+1]=1-v/SV;if(p[1]<minY)minY=p[1];if(v===0)topY=p[1];}}
-  for(let v=0;v<SV;v++)for(let u=0;u<SU;u++){const a=v*(SU+1)+u,b=a+SU+1;idx.push(a,b,a+1,b,b+1,a+1);}
+  // Counter-clockwise from outside: skin rendering and raycasting hit the near wall.
+  for(let v=0;v<SV;v++)for(let u=0;u<SU;u++){const a=v*(SU+1)+u,b=a+SU+1;idx.push(a,a+1,b,b,a+1,b+1);}
   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pos,3));
   g.setAttribute('uv',new THREE.BufferAttribute(uv,2));g.setIndex(idx);g.computeVertexNormals();
   const nr=g.attributes.normal.array;
